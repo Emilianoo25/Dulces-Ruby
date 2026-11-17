@@ -83,7 +83,7 @@ export const marca = {
   /** Usuario de Instagram sin @ (opcional, vacío = no se muestra) */
   instagram: '',
   mensajeGeneral: '¡Hola Dulce Ruby! 👋 Vi el catálogo y quiero hacer un pedido.',
-  url: 'https://dulceruby.vercel.app/',
+  url: 'https://dulces-ruby.vercel.app/',
 };
 
 export const categorias: Categoria[] = [

@@ -1,7 +1,7 @@
 # Dulce Ruby — catálogo y panel
 
-- **Catálogo** (público): `https://dulceruby.vercel.app/` — libro de recetas que se hojea, carrito y pedido por WhatsApp.
-- **Panel** (privado): `https://dulceruby.vercel.app/panel/` — stock, recetas, costos, ventas y ganancias.
+- **Catálogo** (público): `https://dulces-ruby.vercel.app/` — libro de recetas que se hojea, carrito y pedido por WhatsApp.
+- **Panel** (privado): `https://dulces-ruby.vercel.app/panel/` — stock, recetas, costos, ventas y ganancias.
 
 Astro 5 (estático) + Preact (panel) + `page-flip` (libro) + Supabase (datos del panel).
 
@@ -39,7 +39,7 @@ Para usarlo de verdad se conecta a un proyecto **Supabase de Dulce Ruby**:
 
 1. Crear el proyecto en supabase.com (región São Paulo).
 2. **SQL Editor** → pegar todo `supabase/panel.sql` → **Run**.
-3. **Authentication → URL Configuration** → *Site URL*: `https://dulceruby.vercel.app/panel/` (y agregarla en *Redirect URLs*).
+3. **Authentication → URL Configuration** → *Site URL*: `https://dulces-ruby.vercel.app/panel/` (y agregarla en *Redirect URLs*).
 4. **Project Settings → API**: copiar *Project URL* y *Publishable key* en `src/data/panel.ts`
    (o como variables `PUBLIC_DR_SUPABASE_URL` / `PUBLIC_DR_SUPABASE_KEY` en Vercel). **Nunca** la *secret / service_role*.
 5. Ruby entra al panel → **Crear cuenta** → confirma el mail.

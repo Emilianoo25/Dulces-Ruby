@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /panel/
-Sitemap: https://dulceruby.vercel.app/sitemap-index.xml
+Sitemap: https://dulces-ruby.vercel.app/sitemap-index.xml
