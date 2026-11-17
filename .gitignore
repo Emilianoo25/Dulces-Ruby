@@ -1,0 +1,18 @@
+# Build
+dist/
+.astro/
+
+# Dependencias
+node_modules/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Sistema
+.DS_Store
+Thumbs.db
