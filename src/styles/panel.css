@@ -1905,3 +1905,26 @@ html.pn-bloqueo {
 .pn-por-unidad p {
   font-size: 14px;
 }
+
+/* Receta: ingrediente libre + cantidad + unidad */
+.pn-receta__fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px 40px;
+  grid-template-areas: 'nombre nombre nombre' 'cant unidad borrar' 'nuevo nuevo nuevo';
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: #fffaf5;
+}
+.pn-receta__nombre { grid-area: nombre; }
+.pn-receta__fila > .pn-input:not(.pn-receta__nombre):not(.pn-receta__unidad) { grid-area: cant; }
+.pn-receta__unidad { grid-area: unidad; }
+.pn-receta__fila > .pn-icono-btn { grid-area: borrar; width: 40px; height: 48px; color: var(--muted); }
+.pn-receta__nuevo { grid-area: nuevo; color: var(--warn); font-size: 12px; font-weight: 700; }
+@media (min-width: 640px) {
+  .pn-receta__fila {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 120px 40px;
+    grid-template-areas: 'nombre cant unidad borrar' 'nuevo nuevo nuevo nuevo';
+  }
+}

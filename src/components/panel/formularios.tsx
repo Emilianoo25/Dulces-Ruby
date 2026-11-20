@@ -538,6 +538,115 @@ function EditorItems({
   );
 }
 
+/* ═══════════════════════ EDITOR DE RECETA (texto libre + unidad) ═══════════════════════ */
+type UnidadReceta = 'g' | 'kg' | 'ml' | 'l' | 'u' | 'docena';
+const UNIDADES_RECETA: { v: UnidadReceta; label: string; base: Unidad; factor: number }[] = [
+  { v: 'g', label: 'gramos', base: 'g', factor: 1 },
+  { v: 'kg', label: 'kilos', base: 'g', factor: 1000 },
+  { v: 'ml', label: 'ml', base: 'ml', factor: 1 },
+  { v: 'l', label: 'litros', base: 'ml', factor: 1000 },
+  { v: 'u', label: 'unidades', base: 'u', factor: 1 },
+  { v: 'docena', label: 'docenas', base: 'u', factor: 12 },
+];
+const infoUnidad = (v: UnidadReceta) => UNIDADES_RECETA.find((u) => u.v === v)!;
+
+export interface FilaReceta {
+  nombre: string;
+  cantidad: number | null;
+  unidad: UnidadReceta;
+}
+
+/** Receta guardada (unidades base) → filas editables, con la unidad más cómoda */
+function filasDesdeReceta(receta: ItemReceta[], insumos: Insumo[]): FilaReceta[] {
+  return receta.map((r) => {
+    const ins = insumos.find((i) => i.id === r.insumoId);
+    const base = ins?.unidad ?? 'g';
+    const grande = base !== 'u' && r.cantidad >= 1000 && r.cantidad % 100 === 0;
+    const unidad: UnidadReceta = base === 'g' ? (grande ? 'kg' : 'g') : base === 'ml' ? (grande ? 'l' : 'ml') : 'u';
+    return { nombre: ins?.nombre ?? '', cantidad: r.cantidad / infoUnidad(unidad).factor, unidad };
+  });
+}
+
+const mismoNombre = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Filas → receta. Los ingredientes que no existen se crean como insumos nuevos (stock 0, sin precio).
+ * Devuelve error si un ingrediente existente se usa con otra clase de unidad (ej: harina en litros).
+ */
+function resolverReceta(filas: FilaReceta[], insumos: Insumo[]): { receta: ItemReceta[]; nuevos: Insumo[]; error?: string } {
+  const nuevos: Insumo[] = [];
+  const receta: ItemReceta[] = [];
+  for (const f of filas) {
+    const nombre = f.nombre.trim().replace(/\s+/g, ' ');
+    if (!nombre || !f.cantidad || f.cantidad <= 0) continue;
+    const u = infoUnidad(f.unidad);
+    let ins = [...insumos, ...nuevos].find((i) => mismoNombre(i.nombre, nombre));
+    if (!ins) {
+      ins = { id: nuevoId(), nombre: nombre.charAt(0).toUpperCase() + nombre.slice(1), unidad: u.base, stock: 0, minimo: 0, costo: 0, orden: insumos.length + nuevos.length };
+      nuevos.push(ins);
+    } else if (ins.unidad !== u.base) {
+      return { receta: [], nuevos: [], error: `${ins.nombre} se mide en ${NOMBRE_UNIDAD[ins.unidad]}: elegí ${UNIDADES_RECETA.filter((x) => x.base === ins!.unidad).map((x) => x.label).join(' o ')}.` };
+    }
+    const cantidad = f.cantidad * u.factor;
+    const ya = receta.find((r) => r.insumoId === ins!.id);
+    if (ya) ya.cantidad += cantidad;
+    else receta.push({ insumoId: ins.id, cantidad });
+  }
+  return { receta, nuevos };
+}
+
+function EditorReceta({ filas, onCambio, insumos }: { filas: FilaReceta[]; onCambio: (f: FilaReceta[]) => void; insumos: Insumo[] }) {
+  const cambiar = (k: number, p: Partial<FilaReceta>) => onCambio(filas.map((x, j) => (j === k ? { ...x, ...p } : x)));
+  return (
+    <div class="pn-items">
+      <datalist id="pn-lista-insumos">
+        {insumos.map((i) => (
+          <option value={i.nombre} />
+        ))}
+      </datalist>
+      {filas.length === 0 && <p class="pn-items__vacio">Todavía no hay ingredientes.</p>}
+      {filas.map((f, k) => {
+        const existente = insumos.find((i) => mismoNombre(i.nombre, f.nombre));
+        return (
+          <div class="pn-receta__fila">
+            <span class="pn-input pn-receta__nombre">
+              <input
+                type="text"
+                list="pn-lista-insumos"
+                value={f.nombre}
+                placeholder="Ej: Harina leudante"
+                aria-label="Ingrediente"
+                onInput={(e) => {
+                  const nombre = (e.currentTarget as HTMLInputElement).value;
+                  const ins = insumos.find((i) => mismoNombre(i.nombre, nombre));
+                  // Si elige un ingrediente que ya existe, se pone su unidad
+                  const unidad = ins && infoUnidad(f.unidad).base !== ins.unidad ? (ins.unidad === 'g' ? 'g' : ins.unidad === 'ml' ? 'ml' : 'u') : f.unidad;
+                  cambiar(k, { nombre, unidad });
+                }}
+              />
+            </span>
+            <Numero valor={f.cantidad} onCambio={(n) => cambiar(k, { cantidad: n })} placeholder="0" ariaLabel={`Cantidad de ${f.nombre || 'ingrediente'}`} />
+            <span class="pn-input pn-select pn-receta__unidad">
+              <select aria-label="Unidad" value={f.unidad} onChange={(e) => cambiar(k, { unidad: (e.currentTarget as HTMLSelectElement).value as UnidadReceta })}>
+                {UNIDADES_RECETA.map((u) => (
+                  <option value={u.v}>{u.label}</option>
+                ))}
+              </select>
+            </span>
+            <button type="button" class="pn-icono-btn" aria-label={`Quitar ${f.nombre}`} onClick={() => onCambio(filas.filter((_, j) => j !== k))}>
+              <Icono n="borrar" />
+            </button>
+            {f.nombre.trim() && !existente && <span class="pn-receta__nuevo">Nuevo: se agrega a Stock al guardar</span>}
+          </div>
+        );
+      })}
+      <button type="button" class="pn-agregar" onClick={() => onCambio([...filas, { nombre: '', cantidad: null, unidad: 'g' }])}>
+        <Icono n="mas" /> Agregar ingrediente
+      </button>
+    </div>
+  );
+}
+
 const EMOJIS = ['🍩', '🧀', '🥐', '🍪', '🧁', '🍰', '🎂', '🍫', '🥯', '🍞', '🥧', '🍓'];
 
 /* ═══════════════════════ PRODUCTO (receta) ═══════════════════════ */
@@ -547,7 +656,7 @@ export function HojaProducto({ ctx, id }: { ctx: Ctx; id?: string }) {
   const [nombre, setNombre] = useState(original?.nombre ?? '');
   const [emoji, setEmoji] = useState(original?.emoji ?? '🍩');
   const [rinde, setRinde] = useState<number | null>(original?.rinde ?? 12);
-  const [receta, setReceta] = useState<ItemReceta[]>(original?.receta ?? []);
+  const [filas, setFilas] = useState<FilaReceta[]>(() => filasDesdeReceta(original?.receta ?? [], datos.insumos));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -556,7 +665,8 @@ export function HojaProducto({ ctx, id }: { ctx: Ctx; id?: string }) {
     nombre: nombre.trim(),
     emoji,
     rinde: rinde && rinde > 0 ? rinde : 1,
-    receta: receta.filter((r) => r.cantidad > 0),
+    // Para la vista previa: sólo ingredientes que ya existen (los nuevos no tienen precio todavía)
+    receta: resolverReceta(filas, datos.insumos).receta.filter((r) => datos.insumos.some((i) => i.id === r.insumoId)),
     orden: original?.orden ?? datos.productos.length,
   };
   const cp = costoProducto(borrador, mapaInsumos(datos));
@@ -565,12 +675,25 @@ export function HojaProducto({ ctx, id }: { ctx: Ctx; id?: string }) {
   async function guardar() {
     if (!borrador.nombre) return setError('Ponele un nombre.');
     if (!rinde || rinde <= 0) return setError('Indicá cuántas unidades salen por tanda.');
+    const r = resolverReceta(filas, datos.insumos);
+    if (r.error) return setError(r.error);
     setGuardando(true);
-    const productos = original ? datos.productos.map((p) => (p.id === borrador.id ? borrador : p)) : [...datos.productos, borrador];
-    const ok = await ctx.hacer({ t: 'producto', item: borrador }, { ...datos, productos }, original ? 'Receta guardada' : `Producto creado: ${borrador.nombre}`);
+    let base: Datos = datos;
+    if (r.nuevos.length) {
+      base = { ...datos, insumos: [...datos.insumos, ...r.nuevos] };
+      if (!(await ctx.hacer({ t: 'insumos', items: r.nuevos }, base))) return setGuardando(false);
+    }
+    const final: Producto = { ...borrador, receta: r.receta };
+    const productos = original ? base.productos.map((p) => (p.id === final.id ? final : p)) : [...base.productos, final];
+    const ok = await ctx.hacer(
+      { t: 'producto', item: final },
+      { ...base, productos },
+      (original ? 'Receta guardada' : `Producto creado: ${final.nombre}`) +
+        (r.nuevos.length ? ` · nuevos en Stock: ${r.nuevos.map((i) => i.nombre).join(', ')}` : ''),
+    );
     setGuardando(false);
     if (ok) {
-      if (!original) ctx.abrir({ h: 'presentacion', productoId: borrador.id });
+      if (!original) ctx.abrir({ h: 'presentacion', productoId: final.id });
       else ctx.cerrar();
     }
   }
@@ -623,17 +746,7 @@ export function HojaProducto({ ctx, id }: { ctx: Ctx; id?: string }) {
         </div>
       </Campo>
       <Campo label="Ingredientes de una tanda">
-        {datos.insumos.length === 0 ? (
-          <Aviso>Primero cargá tus insumos en la pestaña Stock.</Aviso>
-        ) : (
-          <EditorItems
-            items={receta}
-            onCambio={setReceta}
-            insumos={datos.insumos}
-            textoAgregar="Agregar ingrediente"
-            vacio="Todavía no hay ingredientes."
-          />
-        )}
+        <EditorReceta filas={filas} onCambio={(f) => (setFilas(f), setError(''))} insumos={datos.insumos} />
       </Campo>
 
       {!cp.sinReceta && (
