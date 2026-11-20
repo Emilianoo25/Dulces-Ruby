@@ -2107,7 +2107,7 @@ html.cart-open {
 .dr-cart__atras[hidden] {
   display: none;
 }
-.dr-cart svg:not(.dr-wa):not(.dr-bolsa) {
+.dr-cart svg:not(.dr-wa):not(.dr-bolsa):not(.dr-ilus) {
   width: 20px;
   height: 20px;
   fill: none;
@@ -2695,4 +2695,426 @@ html.cart-open {
 }
 .dr-prices--compacta ~ .dr-llevas .dr-llevas__u {
   display: inline;
+}
+
+/* ── Cumpleaños y eventos (páginas) ─────────────────────── */
+.dr-ev-formatos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.6cqw 3cqw;
+  margin-top: 2.6cqw;
+  padding: 0;
+  list-style: none;
+}
+.dr-ev-formato {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.8cqw 1.8cqw 2.2cqw;
+  border-radius: 4cqw;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(122, 75, 58, 0.1);
+  box-shadow: 0 2.4cqw 4cqw -3cqw rgba(78, 44, 32, 0.45);
+  text-align: center;
+}
+.dr-ev-formato__foto {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  margin-bottom: 1.2cqw;
+  overflow: hidden;
+  border-radius: 3cqw;
+  background: radial-gradient(circle at 50% 40%, #fff 0%, #fdeef0 70%);
+  transform: rotate(var(--tilt, 0deg));
+}
+.dr-ev-formato__foto > :is(img, svg) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dr-ev-formato__foto > svg {
+  width: 82%;
+  object-fit: contain;
+}
+.dr-ev-formato strong {
+  font-size: 3.7cqw;
+  line-height: 1.2;
+}
+.dr-ev-formato em {
+  color: var(--muted);
+  font-size: 2.9cqw;
+  font-style: normal;
+  font-weight: 600;
+}
+.dr-ev-precio {
+  display: inline-block;
+  margin-top: 1.2cqw;
+  padding: 0.6cqw 2.6cqw;
+  border-radius: 999px;
+  background: var(--choco);
+  color: #fff6ec;
+  font-size: 3.4cqw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dr-ev-precio.is-consultar {
+  background: transparent;
+  border: 0.4cqw dashed var(--rose);
+  color: var(--rose-ink);
+  font-size: 3cqw;
+}
+.dr-ev-pasos {
+  display: grid;
+  gap: 2cqw;
+  margin-top: 2.6cqw;
+  padding: 0;
+  list-style: none;
+}
+.dr-ev-pasos li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1cqw 2.4cqw;
+  font-size: 4.1cqw;
+  font-weight: 700;
+}
+.dr-ev-pasos span {
+  display: grid;
+  place-items: center;
+  width: 6.4cqw;
+  height: 6.4cqw;
+  border-radius: 50%;
+  background: var(--blush);
+  color: var(--rose-ink);
+  font-size: 3.6cqw;
+}
+.dr-ev-pasos em {
+  color: var(--muted);
+  font-size: 3.4cqw;
+  font-style: normal;
+}
+.dr-ev-caja {
+  display: flex;
+  align-items: center;
+  gap: 3.4cqw;
+  margin-top: 3.6cqw;
+  padding: 2.6cqw 3cqw;
+  border-radius: 4cqw;
+  border: 0.45cqw dashed var(--blush-2);
+  background: #fff4f5;
+}
+.dr-ev-caja__foto {
+  display: grid;
+  flex: 0 0 26cqw;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 3cqw;
+  background: #fff;
+  transform: rotate(-3deg);
+}
+.dr-ev-caja__foto > :is(img, svg) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.dr-ev-caja__txt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6cqw;
+}
+.dr-ev-caja__txt strong {
+  font-size: 4.4cqw;
+}
+.dr-ev-caja__txt em {
+  color: var(--muted);
+  font-size: 3.2cqw;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.dr-ev-nota {
+  margin: 3cqw 0 2.6cqw;
+  color: var(--rose-ink);
+  font-size: 5cqw;
+  text-align: center;
+  transform: rotate(-1.5deg);
+}
+.dr-page [data-combo-open] {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── Modal "Armá tu combo" ─────────────────────────────── */
+.dr-combo__formatos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.dr-combo__formato,
+.dr-combo__cantidades label {
+  position: relative;
+}
+.dr-combo__formato input,
+.dr-combo__cantidades input[type='radio'] {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.dr-combo__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 8px 8px 10px;
+  border-radius: 16px;
+  border: 2px solid rgba(122, 75, 58, 0.1);
+  background: #fff;
+  text-align: center;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    transform 0.2s;
+}
+.dr-combo__card strong {
+  font-size: 13.5px;
+  line-height: 1.2;
+}
+.dr-combo__card em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+.dr-combo__formato input:checked + .dr-combo__card {
+  border-color: var(--rose);
+  background: #fff1f3;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -10px rgba(185, 74, 99, 0.7);
+}
+.dr-combo__formato input:focus-visible + .dr-combo__card,
+.dr-combo__cantidades input:focus-visible + span {
+  outline: 3px solid var(--rose);
+  outline-offset: 1px;
+}
+.dr-combo__ilus {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.dr-combo .dr-combo__ilus > svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+.dr-combo__ilus > img {
+  width: 100%;
+  object-fit: cover;
+}
+.dr-combo__ilus--chica {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  background: #fdeef0;
+}
+.dr-combo__cantidades {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.dr-combo__cantidades span {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 12px;
+  background: rgba(122, 75, 58, 0.07);
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+.dr-combo__cantidades input:checked + span {
+  background: var(--choco);
+  color: #fff6ec;
+}
+.dr-combo__otra input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 6px;
+  border-radius: 12px;
+  border: 2px dashed rgba(122, 75, 58, 0.25);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+.dr-combo__otra input:focus {
+  border-color: var(--rose);
+  outline: none;
+}
+.dr-combo__extra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(122, 75, 58, 0.1);
+}
+.dr-combo__extra + .dr-combo__extra {
+  margin-top: 8px;
+}
+.dr-combo__extra-txt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.dr-combo__extra-txt strong {
+  font-size: 14px;
+}
+.dr-combo__extra-txt em {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+.dr-combo__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dr-combo__step button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fdeef0;
+  color: var(--rose-ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dr-combo__step span {
+  min-width: 1.4em;
+  text-align: center;
+}
+.dr-combo__resumen {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+.dr-combo__resumen li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+}
+.dr-combo__resumen b {
+  color: var(--text);
+  white-space: nowrap;
+}
+.dr-cart__item--combo {
+  border-color: var(--blush-2);
+  background: linear-gradient(135deg, #fff 0%, #fff3f5 100%);
+}
+
+/* ── Lavado de cara ────────────────────────────────────── */
+/* "Mejor precio" no tapa el precio en la página compacta */
+.dr-prices--compacta .dr-price__flag {
+  top: -2.8cqw;
+  right: 34%;
+}
+.dr-chip__nuevo {
+  margin-left: 2px;
+  padding: 3px 6px 2px;
+  border-radius: 999px;
+  background: var(--rose);
+  color: #fff;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation: dr-nuevo 2.4s ease-in-out infinite;
+}
+.dr-chip.is-active .dr-chip__nuevo {
+  background: #fff4ea;
+  color: var(--rose-ink);
+}
+@keyframes dr-nuevo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+/* Atajo a cumpleaños desde las listas cortas */
+.dr-cross {
+  display: flex;
+  align-items: center;
+  gap: 2.6cqw;
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: 1cqw;
+  padding: 2.4cqw 3cqw;
+  border: 0.4cqw dashed var(--blush-2);
+  border-radius: 3.4cqw;
+  background: linear-gradient(120deg, #fff4f5 0%, #fffaf0 100%);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 3.2cqw;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.dr-cross strong {
+  display: block;
+  color: var(--rose-ink);
+  font-size: 3.7cqw;
+}
+.dr-cross__emoji {
+  font-size: 6.4cqw;
+  transform: rotate(-8deg);
+}
+.dr-cross__arrow {
+  margin-left: auto;
+  color: var(--rose-ink);
+  font-size: 5cqw;
+  font-weight: 700;
+}
+.dr-cross:hover {
+  transform: translateY(-0.4cqw);
+  box-shadow: 0 2cqw 4cqw -3cqw rgba(185, 74, 99, 0.7);
+}
+/* Tarjetas de eventos: toque de vida al pasar */
+.dr-ev-formato {
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.dr-ev-formato:hover {
+  transform: translateY(-0.6cqw) rotate(-0.4deg);
+  box-shadow: 0 3cqw 5cqw -3cqw rgba(185, 74, 99, 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dr-chip__nuevo {
+    animation: none;
+  }
 }

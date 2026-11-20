@@ -17,6 +17,7 @@ import {
   marca,
   categorias,
   promosExtra,
+  eventos,
   lugares,
   formatoPesos,
   linkWhatsapp,
@@ -44,6 +45,8 @@ const P = {
   bienvenida: 1,
   indice: 2,
   cat: (i: number) => 3 + i * 2,
+  eventos: siguiente++,
+  eventos2: siguiente++,
   promos: siguiente++,
   donde: mostrarDonde ? siguiente++ : -1,
   pedir: siguiente++,
@@ -56,6 +59,7 @@ const lado = (i: number) => (i % 2 === 1 ? 'is-left' : 'is-right');
 const secciones = [
   { id: 'inicio', menu: 'Inicio', emoji: '📖', page: P.tapa },
   ...categorias.map((c, i) => ({ id: c.id, menu: c.menu, emoji: c.emoji, page: P.cat(i) })),
+  { id: 'eventos', menu: 'Cumples', emoji: '🎉', page: P.eventos },
   { id: 'promos', menu: 'Promos', emoji: '🎁', page: P.promos },
   ...(mostrarDonde ? [{ id: 'donde', menu: 'Dónde', emoji: '📍', page: P.donde }] : []),
   { id: 'pedir', menu: 'Pedir', emoji: '💬', page: P.pedir },
@@ -63,13 +67,23 @@ const secciones = [
 
 const indice = [
   ...categorias.map((c, i) => ({ label: c.titulo, emoji: c.emoji, page: P.cat(i) })),
+  { label: 'Cumpleaños y eventos', emoji: '🎉', page: P.eventos },
   { label: 'Promos', emoji: '🎁', page: P.promos },
   ...(mostrarDonde ? [{ label: 'Dónde encontrarnos', emoji: '📍', page: P.donde }] : []),
   { label: 'Cómo pedir', emoji: '💬', page: P.pedir },
 ];
 
 // ── Carrito: catálogo que usa el script del pedido ─────────
+const catChipitas = categorias.find((c) => c.id === 'chipitas');
+const docenaChipitas = catChipitas?.opciones.find((o) => o.cantidad === 12);
 const catalogoCarrito = {
+  eventos: {
+    minimo: eventos.minimo,
+    cantidades: eventos.cantidades,
+    formatos: eventos.formatos.map((fm) => ({ id: fm.id, nombre: fm.nombre, precio: fm.precio, conTarjeta: !!fm.conTarjeta })),
+    caja: { nombre: eventos.caja.nombre, precio: eventos.caja.precio },
+    chipitas: catChipitas && docenaChipitas ? { key: claveOpcion(catChipitas, docenaChipitas), precio: docenaChipitas.precio } : null,
+  },
   whatsapp: marca.whatsapp,
   primeraSeccion: categorias[0]?.id ?? 'inicio',
   items: categorias.flatMap((c) =>
@@ -195,6 +209,7 @@ const granitas = Array.from({ length: 22 }, (_, i) => ({
               <button type="button" class="dr-chip" data-goto={sec.page} data-chip={sec.id}>
                 <span class="dr-chip__emoji" aria-hidden="true">{sec.emoji}</span>
                 <span>{sec.menu}</span>
+                {sec.id === 'eventos' && <span class="dr-chip__nuevo">nuevo</span>}
               </button>
             </li>
           ))}
@@ -340,12 +355,73 @@ const granitas = Array.from({ length: 22 }, (_, i) => ({
                         <BolsaIcon /> <span>Ver mi pedido</span>
                       </button>
                     </div>
+                    {c.opciones.length < 4 && (
+                      <button type="button" class="dr-cross" data-goto={P.eventos}>
+                        <span class="dr-cross__emoji" aria-hidden="true">🎉</span>
+                        <span><strong>¿Es para un cumple?</strong> Mirá los souvenirs y armá tu combo</span>
+                        <span class="dr-cross__arrow" aria-hidden="true">→</span>
+                      </button>
+                    )}
                     <div class="dr-folio">{P.cat(i) + 1}</div>
                   </div>
                 </div>
               </>
             );
           })}
+
+          <!-- CUMPLEAÑOS Y EVENTOS ─────────────────── -->
+          <div class:list={['dr-page dr-paper', lado(P.eventos)]} data-section="eventos">
+            <div class="dr-page__inner">
+              <div class="dr-runner"><span>{marca.nombre}</span><span>Cumpleaños</span></div>
+              <p class="dr-eyebrow">🎉 Souvenirs dulces</p>
+              <h2 class="dr-script dr-h1 dr-h1--sm">{eventos.titulo}</h2>
+              <ul class="dr-ev-formatos">
+                {eventos.formatos.map((fm, i) => (
+                  <li class="dr-ev-formato">
+                    <span class="dr-ev-formato__foto" style={`--tilt:${i % 2 ? 2 : -2}deg`}>
+                      {fm.foto ? <img src={fm.foto} alt={fm.nombre} loading="lazy" decoding="async" /> : <Ilustracion tipo={fm.ilustracion} seed={i + 3} />}
+                    </span>
+                    <strong>{fm.nombre}</strong>
+                    <em>{fm.detalle}</em>
+                    <span class:list={['dr-ev-precio', fm.precio === null && 'is-consultar']}>
+                      {fm.precio === null ? 'a confirmar' : `${formatoPesos(fm.precio)} c/u`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div class="dr-folio">{P.eventos}</div>
+            </div>
+          </div>
+
+          <div class:list={['dr-page dr-paper dr-paper--lined', lado(P.eventos2)]} data-section="eventos">
+            <div class="dr-page__inner">
+              <div class="dr-runner"><span>{marca.nombre}</span><span>Armá tu combo</span></div>
+              <p class="dr-eyebrow">🎈 Para tu fiesta</p>
+              <h2 class="dr-script dr-h2">Armá tu combo</h2>
+              <ol class="dr-ev-pasos">
+                <li><span>1</span> Elegí el formato</li>
+                <li><span>2</span> ¿Cuántos? <em>{eventos.cantidades.join(' · ')}</em></li>
+                <li><span>3</span> Sumá caja y chipitas</li>
+              </ol>
+              <div class="dr-ev-caja">
+                <span class="dr-ev-caja__foto">
+                  {eventos.caja.foto ? <img src={eventos.caja.foto} alt={eventos.caja.nombre} loading="lazy" decoding="async" /> : <Ilustracion tipo="caja" />}
+                </span>
+                <span class="dr-ev-caja__txt">
+                  <strong>{eventos.caja.nombre}</strong>
+                  <em>{eventos.caja.detalle}</em>
+                  <span class:list={['dr-ev-precio', eventos.caja.precio === null && 'is-consultar']}>
+                    {eventos.caja.precio === null ? 'a confirmar' : formatoPesos(eventos.caja.precio)}
+                  </span>
+                </span>
+              </div>
+              {eventos.nota && <p class="dr-hand dr-ev-nota">{eventos.nota}</p>}
+              <button type="button" class="dr-btn dr-btn--wa dr-btn--big" data-combo-open>
+                <span aria-hidden="true">🎉</span> <span>Armar mi combo</span>
+              </button>
+              <div class="dr-folio">{P.eventos2}</div>
+            </div>
+          </div>
 
           <!-- PROMOS ───────────────────────────────── -->
           <div class:list={['dr-page dr-paper', lado(P.promos)]} data-section="promos">
@@ -375,6 +451,15 @@ const granitas = Array.from({ length: 22 }, (_, i) => ({
                     </button>
                   );
                 })}
+                <button type="button" class="dr-coupon dr-coupon--alt" data-goto={P.eventos}>
+                  <span class="dr-coupon__flag">Cumpleaños</span>
+                  <span class="dr-coupon__emoji" aria-hidden="true">🎉</span>
+                  <span class="dr-coupon__body">
+                    <span class="dr-coupon__title">Souvenirs para tu fiesta</span>
+                    <span class="dr-coupon__meta">Palitos y bolsitas desde {eventos.minimo} unidades</span>
+                  </span>
+                  <span class="dr-coupon__price"><em class="dr-coupon__ask">Ver</em></span>
+                </button>
                 {promosExtra.map((p) => (
                   <a class="dr-coupon dr-coupon--alt" href={linkWhatsapp(p.mensaje)} target="_blank" rel="noopener">
                     {p.sello && <span class="dr-coupon__flag">{p.sello}</span>}
@@ -631,6 +716,93 @@ const granitas = Array.from({ length: 22 }, (_, i) => ({
       </section>
     </div>
 
+
+    <!-- Armá tu combo (cumpleaños y eventos) ───────────── -->
+    <div class="dr-cart dr-combo" data-combo hidden>
+      <div class="dr-cart__fondo" data-combo-close></div>
+      <section class="dr-cart__panel" role="dialog" aria-modal="true" aria-labelledby="dr-combo-titulo" tabindex="-1">
+        <header class="dr-cart__cab">
+          <div>
+            <h2 id="dr-combo-titulo" class="dr-script">Armá tu combo</h2>
+            <p>Souvenirs para cumpleaños y eventos</p>
+          </div>
+          <button type="button" class="dr-cart__x" data-combo-close aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </header>
+        <form class="dr-cart__paso" data-combo-form novalidate>
+          <div class="dr-cart__cuerpo">
+            <fieldset class="dr-f">
+              <legend>1. Elegí el formato</legend>
+              <div class="dr-combo__formatos">
+                {eventos.formatos.map((fm, i) => (
+                  <label class="dr-combo__formato">
+                    <input type="radio" name="formato" value={fm.id} checked={i === eventos.formatos.length - 1} />
+                    <span class="dr-combo__card">
+                      <span class="dr-combo__ilus">
+                        {fm.foto ? <img src={fm.foto} alt="" loading="lazy" /> : <Ilustracion tipo={fm.ilustracion} seed={i + 3} />}
+                      </span>
+                      <strong>{fm.nombre}</strong>
+                      <em>{fm.precio === null ? 'precio a confirmar' : `${formatoPesos(fm.precio)} c/u`}</em>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset class="dr-f">
+              <legend>2. ¿Cuántos?</legend>
+              <div class="dr-combo__cantidades">
+                {eventos.cantidades.map((n, i) => (
+                  <label><input type="radio" name="cantidad" value={n} checked={i === 0} /><span>{n}</span></label>
+                ))}
+                <label class="dr-combo__otra"><input type="text" inputmode="numeric" name="otra" placeholder="Otra" aria-label="Otra cantidad" /></label>
+              </div>
+            </fieldset>
+            <label class="dr-f" data-solo-tarjeta>
+              <span>Nombre y edad para la tarjetita</span>
+              <input name="tarjeta" type="text" maxlength="40" placeholder="Ej: Nico · 4 años" />
+            </label>
+            <fieldset class="dr-f">
+              <legend>3. Sumá a tu combo (opcional)</legend>
+              <div class="dr-combo__extra">
+                <span class="dr-combo__ilus dr-combo__ilus--chica">
+                  {eventos.caja.foto ? <img src={eventos.caja.foto} alt="" loading="lazy" /> : <Ilustracion tipo="caja" />}
+                </span>
+                <span class="dr-combo__extra-txt">
+                  <strong>{eventos.caja.nombre}</strong>
+                  <em>{eventos.caja.precio === null ? 'precio a confirmar' : formatoPesos(eventos.caja.precio)}</em>
+                </span>
+                <span class="dr-combo__step">
+                  <button type="button" data-combo-step="caja:-1" aria-label="Una caja menos">−</button>
+                  <span data-combo-n="caja">0</span>
+                  <button type="button" data-combo-step="caja:1" aria-label="Una caja más">+</button>
+                </span>
+              </div>
+              {docenaChipitas && (
+                <div class="dr-combo__extra">
+                  <span class="dr-combo__ilus dr-combo__ilus--chica"><Ilustracion tipo="chipa" seed={31} /></span>
+                  <span class="dr-combo__extra-txt">
+                    <strong>Docenas de chipitas</strong>
+                    <em>{formatoPesos(docenaChipitas.precio)} la docena</em>
+                  </span>
+                  <span class="dr-combo__step">
+                    <button type="button" data-combo-step="chipitas:-1" aria-label="Una docena menos">−</button>
+                    <span data-combo-n="chipitas">0</span>
+                    <button type="button" data-combo-step="chipitas:1" aria-label="Una docena más">+</button>
+                  </span>
+                </div>
+              )}
+            </fieldset>
+            <p class="dr-cart__error" data-combo-error role="alert" hidden></p>
+          </div>
+          <footer class="dr-cart__pie">
+            <ul class="dr-combo__resumen" data-combo-resumen></ul>
+            <div class="dr-cart__total"><span>Total</span><strong data-combo-total>$0</strong></div>
+            <button type="submit" class="dr-cart__btn">🎉 Agregar al pedido</button>
+          </footer>
+        </form>
+      </section>
+    </div>
     <div class="dr-toast" data-toast role="status" aria-live="polite" hidden></div>
 
     <script is:inline type="application/json" id="dr-catalogo" set:html={JSON.stringify(catalogoCarrito)} />

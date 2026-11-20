@@ -15,7 +15,7 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-export type Ilustracion = 'dona' | 'chipa' | 'generica';
+export type Ilustracion = 'dona' | 'chipa' | 'generica' | 'bolsita' | 'palito1' | 'palito2' | 'palito3' | 'caja';
 
 export interface Opcion {
   /** Cómo se llama la presentación: "Caja de 15" */
@@ -128,14 +128,53 @@ export const categorias: Categoria[] = [
  * producto (calculada con los precios de arriba). Acá podés sumar
  * promos especiales de temporada (Halloween, Día de la Madre, etc.).
  */
-export const promosExtra: PromoExtra[] = [
-  {
-    titulo: '¿Cumple, evento o mesa dulce?',
-    detalle: 'Contanos cantidad y fecha y armamos tu pedido a medida.',
-    sello: 'Pedidos grandes',
-    mensaje: '¡Hola Dulce Ruby! 👋 Quiero consultar por un pedido grande para un evento.',
+export const promosExtra: PromoExtra[] = [];
+
+/* ═════════════════════  CUMPLEAÑOS Y EVENTOS  ═════════════════════
+ * Souvenirs y combos para fiestas. El cliente los arma en la página
+ * "Cumpleaños y eventos": elige formato, cantidad, caja personalizada
+ * y chipitas, y se suma al pedido.
+ *
+ * PRECIOS: `precio` es por UNIDAD de souvenir (por bolsita o por palito).
+ *   precio: null  → se muestra "a confirmar" (el cliente igual puede pedirlo).
+ * FOTOS: subilas a public/fotos/ y poné la ruta en `foto`.
+ */
+export interface FormatoEvento {
+  id: string;
+  nombre: string;
+  detalle: string;
+  /** Donas que lleva cada souvenir */
+  donas: number;
+  precio: number | null;
+  foto?: string;
+  ilustracion: Ilustracion;
+  /** Pide nombre/edad para la tarjetita */
+  conTarjeta?: boolean;
+}
+
+export const eventos = {
+  titulo: 'Cumpleaños y eventos',
+  bajada: 'Souvenirs dulces para tu fiesta',
+  /** Cantidades rápidas para elegir (el cliente también puede escribir otra) */
+  cantidades: [10, 20, 30, 50],
+  /** Pedido mínimo de souvenirs */
+  minimo: 10,
+  formatos: [
+    { id: 'bolsita', nombre: '1 dona en bolsita', detalle: 'con tarjetita personalizada', donas: 1, precio: null, foto: '', ilustracion: 'bolsita', conTarjeta: true },
+    { id: 'palito-1', nombre: 'Palito de 1 dona', detalle: 'con moño', donas: 1, precio: null, foto: '', ilustracion: 'palito1' },
+    { id: 'palito-2', nombre: 'Palito de 2 donas', detalle: 'con moño', donas: 2, precio: null, foto: '', ilustracion: 'palito2' },
+    { id: 'palito-3', nombre: 'Palito de 3 donas', detalle: 'con moño', donas: 3, precio: 2000, foto: '', ilustracion: 'palito3' },
+  ] as FormatoEvento[],
+  caja: {
+    nombre: 'Caja personalizada',
+    detalle: 'con el nombre y la temática del cumple',
+    /** Precio por caja (null = a confirmar) */
+    precio: null as number | null,
+    foto: '',
   },
-];
+  /** Texto chico abajo (vacío = no se muestra) */
+  nota: 'Pedilos con anticipación para tenerlos a tiempo.',
+};
 
 /** Puntos de venta, ferias, retiro, etc. */
 export const lugares: Lugar[] = [

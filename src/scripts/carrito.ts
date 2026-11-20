@@ -19,10 +19,56 @@ interface ItemCatalogo {
   /** Formato propio (palito): no se combina con las otras presentaciones */
   aparte?: boolean;
 }
+interface FormatoEv {
+  id: string;
+  nombre: string;
+  precio: number | null;
+  conTarjeta: boolean;
+}
+interface Eventos {
+  minimo: number;
+  cantidades?: number[];
+  formatos: FormatoEv[];
+  caja: { nombre: string; precio: number | null };
+  chipitas: { key: string; precio: number } | null;
+}
 interface Catalogo {
   whatsapp: string;
   primeraSeccion: string;
   items: ItemCatalogo[];
+  eventos?: Eventos;
+}
+/** Combo de cumpleaños/eventos dentro del pedido */
+export interface ComboEvento {
+  id: string;
+  formatoId: string;
+  cantidad: number;
+  cajas: number;
+  tarjeta: string;
+}
+/** Renglón de combo ya resuelto: texto, plata conocida y si algo queda a confirmar */
+export interface LineaCombo {
+  titulo: string;
+  detalle: string[];
+  monto: number;
+  aConfirmar: boolean;
+}
+
+export function resolverCombo(c: ComboEvento, ev: Eventos): LineaCombo | null {
+  const fm = ev.formatos.find((f) => f.id === c.formatoId);
+  if (!fm) return null;
+  let monto = 0;
+  let aConfirmar = false;
+  const detalle: string[] = [];
+  if (fm.precio === null) aConfirmar = true;
+  else monto += fm.precio * c.cantidad;
+  if (c.cajas > 0) {
+    if (ev.caja.precio === null) aConfirmar = true;
+    else monto += ev.caja.precio * c.cajas;
+    detalle.push(`+ ${c.cajas} ${c.cajas === 1 ? ev.caja.nombre.toLowerCase() : ev.caja.nombre.toLowerCase().replace(/^caja/, 'cajas').replace('personalizada', 'personalizadas')}`);
+  }
+  if (c.tarjeta) detalle.push(`Tarjetita: ${c.tarjeta}`);
+  return { titulo: `${c.cantidad} × ${fm.nombre}`, detalle, monto, aConfirmar };
 }
 type Carrito = Record<string, number>;
 type Paso = 'lista' | 'datos' | 'listo';
@@ -36,6 +82,7 @@ interface DatosCliente {
 }
 
 const CLAVE_CARRITO = 'dr-carrito-v1';
+const CLAVE_COMBOS = 'dr-combos-v1';
 const CLAVE_CLIENTE = 'dr-cliente-v1';
 const MAX_POR_ITEM = 99;
 const MAX_UNIDADES = 600;
@@ -139,15 +186,20 @@ export function sugerencia(opciones: ItemCatalogo[], unidades: number): { k: num
   return null;
 }
 
-export function armarMensaje(lineas: { it: ItemCatalogo; n: number }[], d: DatosCliente): string {
-  const total = lineas.reduce((s, l) => s + l.it.precio * l.n, 0);
+export function armarMensaje(lineas: { it: ItemCatalogo; n: number }[], d: DatosCliente, combos: LineaCombo[] = []): string {
+  const total = lineas.reduce((s, l) => s + l.it.precio * l.n, 0) + combos.reduce((s, c) => s + c.monto, 0);
+  const aConfirmar = combos.some((c) => c.aConfirmar);
   const envio = d.entrega === 'envio';
   const partes = [
     '¡Hola Dulce Ruby! 👋 Te hago este pedido desde la página:',
     '',
+    ...combos.flatMap((c) => [
+      `• 🎉 Combo cumple: ${c.titulo} — ${c.aConfirmar ? (c.monto ? `${pesos(c.monto)} + a confirmar` : 'precio a confirmar') : pesos(c.monto)}`,
+      ...c.detalle.map((x) => `   ${x}`),
+    ]),
     ...lineas.map((l) => `• ${nombreLinea(l.it, l.n)} — ${pesos(l.it.precio * l.n)}`),
     '',
-    `*Total: ${pesos(total)}*${envio ? ' (sin el envío)' : ''}`,
+    `*Total: ${pesos(total)}*${aConfirmar ? ' + lo que está a confirmar' : ''}${envio ? ' (sin el envío)' : ''}`,
     '',
     `*Nombre:* ${d.nombre}`,
     `*Entrega:* ${envio ? `Envío a ${d.direccion}` : 'Lo retiro'}`,
@@ -228,10 +280,19 @@ export function initCarrito(): void {
   let abridor: HTMLElement | null = null;
   let ultimoLink = '';
 
+  /* ── combos de cumpleaños ── */
+  const ev = catalogo.eventos;
+  const combos: ComboEvento[] = (leer<ComboEvento[]>(CLAVE_COMBOS) ?? []).filter((c) => ev?.formatos.some((f) => f.id === c.formatoId));
+  const guardarCombos = () => guardar(CLAVE_COMBOS, combos);
+  const lineasCombo = () => (ev ? combos.map((c) => ({ c, l: resolverCombo(c, ev)! })).filter((x) => x.l) : []);
+  const aConfirmar = () => lineasCombo().some((x) => x.l.aConfirmar);
+
   const lineas = () =>
     catalogo.items.filter((it) => (carrito[it.key] ?? 0) > 0).map((it) => ({ it, n: carrito[it.key] }));
-  const total = () => lineas().reduce((s, l) => s + l.it.precio * l.n, 0);
-  const cantidad = () => lineas().reduce((s, l) => s + l.n, 0);
+  const total = () => lineas().reduce((s, l) => s + l.it.precio * l.n, 0) + lineasCombo().reduce((s, x) => s + x.l.monto, 0);
+  const cantidad = () => lineas().reduce((s, l) => s + l.n, 0) + combos.length;
+  const textoTotal = () => (aConfirmar() ? `${pesos(total())} + a confirmar` : pesos(total()));
+  const hayAlgo = () => lineas().length > 0 || combos.length > 0;
 
   /* ── pintar ─────────────────────────────────────────── */
   function pintar() {
@@ -273,12 +334,28 @@ export function initCarrito(): void {
       e.hidden = n === 0;
       e.textContent = String(n);
     });
-    $$<HTMLElement>('[data-cart-label]').forEach((e) => (e.textContent = n ? `Tu pedido · ${pesos(total())}` : 'Hacé tu pedido'));
+    $$<HTMLElement>('[data-cart-label]').forEach((e) => (e.textContent = n ? `Tu pedido · ${pesos(total())}${aConfirmar() ? '+' : ''}` : 'Hacé tu pedido'));
     html.classList.toggle('cart-has-items', n > 0);
 
     // Lista del carrito
     const ls = lineas();
-    $('[data-cart-items]').innerHTML = ls
+    const htmlCombos = lineasCombo()
+      .map(
+        ({ c, l }) => `
+      <li class="dr-cart__item dr-cart__item--combo">
+        <span class="dr-cart__emoji" aria-hidden="true">🎉</span>
+        <span class="dr-cart__info">
+          <strong>${esc(l.titulo)}</strong>
+          <small>${esc(['Combo cumple', ...l.detalle].join(' · '))}</small>
+        </span>
+        <span class="dr-cart__qty">
+          <button type="button" data-combo-quitar="${esc(c.id)}" aria-label="Quitar combo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        </span>
+        <span class="dr-cart__sub">${l.aConfirmar ? (l.monto ? `${pesos(l.monto)} + a confirmar` : 'a confirmar') : pesos(l.monto)}</span>
+      </li>`,
+      )
+      .join('');
+    $('[data-cart-items]').innerHTML = htmlCombos + ls
       .map(
         ({ it, n: q }) => `
       <li class="dr-cart__item">
@@ -296,15 +373,15 @@ export function initCarrito(): void {
       </li>`,
       )
       .join('');
-    $('[data-cart-vacio]').hidden = ls.length > 0;
-    $('[data-cart-pie]').hidden = ls.length === 0;
-    $$<HTMLElement>('[data-cart-total]', raiz).forEach((e) => (e.textContent = pesos(total())));
+    $('[data-cart-vacio]').hidden = hayAlgo();
+    $('[data-cart-pie]').hidden = !hayAlgo();
+    $$<HTMLElement>('[data-cart-total]', raiz).forEach((e) => (e.textContent = textoTotal()));
     const ahorroTotal = cats.reduce((s, c) => s + ahorroDe(c), 0);
     $$<HTMLElement>('[data-cart-ahorro]', raiz).forEach((e) => {
       e.hidden = ahorroTotal <= 0;
       e.textContent = ahorroTotal > 0 ? `Con los packs ahorrás ${pesos(ahorroTotal)}` : '';
     });
-    if (paso === 'datos' && ls.length === 0) irA('lista');
+    if (paso === 'datos' && !hayAlgo()) irA('lista');
   }
 
   const persistir = () => guardar(CLAVE_CARRITO, carrito);
@@ -399,6 +476,8 @@ export function initCarrito(): void {
     // Pedido ya enviado → se vacía al cerrar
     if (paso === 'listo') {
       Object.keys(carrito).forEach((k) => delete carrito[k]);
+      combos.length = 0;
+      guardarCombos();
       persistir();
       paso = 'lista';
       pintar();
@@ -453,12 +532,12 @@ export function initCarrito(): void {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const d = datosDelForm();
-    if (!lineas().length) return irA('lista');
+    if (!hayAlgo()) return irA('lista');
     if (d.nombre.length < 2) return error('Decinos tu nombre para saber de quién es el pedido.', 'nombre');
     if (d.entrega === 'envio' && d.direccion.length < 4) return error('Para el envío necesitamos la dirección o la zona.', 'direccion');
     guardar(CLAVE_CLIENTE, { nombre: d.nombre, entrega: d.entrega, direccion: d.direccion, pago: d.pago });
 
-    ultimoLink = `https://wa.me/${catalogo.whatsapp}?text=${encodeURIComponent(armarMensaje(lineas(), d))}`;
+    ultimoLink = `https://wa.me/${catalogo.whatsapp}?text=${encodeURIComponent(armarMensaje(lineas(), d, lineasCombo().map((x) => x.l)))}`;
     $<HTMLAnchorElement>('[data-cart-wa]').href = ultimoLink;
     // (sin 'noopener' en features: con eso window.open devuelve null aunque abra)
     const ventana = window.open(ultimoLink, '_blank');
@@ -493,10 +572,14 @@ export function initCarrito(): void {
       irA(t.dataset.cartStep as Paso);
     } else if (t.hasAttribute('data-cart-vaciar')) {
       Object.keys(carrito).forEach((k) => delete carrito[k]);
+      combos.length = 0;
+      guardarCombos();
       persistir();
       pintar();
     } else if (t.hasAttribute('data-cart-nuevo')) {
       Object.keys(carrito).forEach((k) => delete carrito[k]);
+      combos.length = 0;
+      guardarCombos();
       persistir();
       paso = 'lista';
       pintar();
@@ -513,6 +596,10 @@ export function initCarrito(): void {
 
   // Otra pestaña cambió el carrito
   window.addEventListener('storage', (e) => {
+    if (e.key === CLAVE_COMBOS) {
+      combos.splice(0, combos.length, ...(leer<ComboEvento[]>(CLAVE_COMBOS) ?? []));
+      return pintar();
+    }
     if (e.key !== CLAVE_CARRITO) return;
     Object.keys(carrito).forEach((k) => delete carrito[k]);
     Object.assign(carrito, leer<Carrito>(CLAVE_CARRITO) ?? {});
@@ -520,5 +607,128 @@ export function initCarrito(): void {
     pintar();
   });
 
+  initCombo();
   pintar();
+
+  /* ── Armá tu combo (cumpleaños y eventos) ───────────── */
+  function initCombo() {
+    const modal = document.querySelector<HTMLElement>('[data-combo]');
+    const fc = modal?.querySelector<HTMLFormElement>('[data-combo-form]');
+    if (!ev || !modal || !fc) return;
+    const evt = ev;
+    const q = <T extends Element = HTMLElement>(sel: string) => modal.querySelector<T>(sel)!;
+    const extras = { caja: 0, chipitas: 0 };
+    let abridorCombo: HTMLElement | null = null;
+
+    const formato = () => evt.formatos.find((f) => f.id === (fc.elements.namedItem('formato') as RadioNodeList).value) ?? evt.formatos[0];
+    const cantidadElegida = () => {
+      const otra = (fc.elements.namedItem('otra') as HTMLInputElement).value.replace(/\D/g, '');
+      if (otra) return Math.min(999, Number(otra));
+      return Number((fc.elements.namedItem('cantidad') as RadioNodeList).value) || 0;
+    };
+    const tarjeta = () => ((fc.elements.namedItem('tarjeta') as HTMLInputElement).value ?? '').trim().replace(/\s+/g, ' ');
+    const borrador = (): ComboEvento => ({
+      id: '',
+      formatoId: formato().id,
+      cantidad: cantidadElegida(),
+      cajas: extras.caja,
+      tarjeta: formato().conTarjeta ? tarjeta() : '',
+    });
+
+    function resumir() {
+      const fm = formato();
+      q('[data-solo-tarjeta]').hidden = !fm.conTarjeta;
+      modal!.querySelectorAll<HTMLElement>('[data-combo-n]').forEach((e) => (e.textContent = String(extras[e.dataset.comboN as 'caja' | 'chipitas'] ?? 0)));
+      const l = resolverCombo(borrador(), evt)!;
+      const chip = evt.chipitas ? extras.chipitas * evt.chipitas.precio : 0;
+      const filas = [
+        `<li><span>${esc(l.titulo)}</span><b>${fm.precio === null ? 'a confirmar' : pesos(fm.precio * cantidadElegida())}</b></li>`,
+        extras.caja ? `<li><span>${extras.caja} × ${esc(evt.caja.nombre)}</span><b>${evt.caja.precio === null ? 'a confirmar' : pesos(evt.caja.precio * extras.caja)}</b></li>` : '',
+        chip ? `<li><span>${extras.chipitas} × Docena de chipitas</span><b>${pesos(chip)}</b></li>` : '',
+      ];
+      q('[data-combo-resumen]').innerHTML = filas.join('');
+      const tot = l.monto + chip;
+      q('[data-combo-total]').textContent = l.aConfirmar ? (tot ? `${pesos(tot)} + a confirmar` : 'A confirmar') : pesos(tot);
+    }
+
+    function abrirCombo(desde?: HTMLElement | null) {
+      abridorCombo = desde ?? null;
+      if (toast) toast.hidden = true;
+      q('[data-combo-error]').hidden = true;
+      resumir();
+      modal!.hidden = false;
+      requestAnimationFrame(() => modal!.classList.add('is-open'));
+      html.classList.add('cart-open');
+      requestAnimationFrame(() => q('.dr-cart__panel').focus());
+    }
+    function cerrarCombo() {
+      modal!.classList.remove('is-open');
+      html.classList.remove('cart-open');
+      window.setTimeout(() => (modal!.hidden = true), 260);
+      abridorCombo?.focus?.();
+    }
+
+    fc.addEventListener('input', (e) => {
+      const t = e.target as HTMLInputElement;
+      // escribir "otra" desmarca los botones de cantidad (y viceversa)
+      if (t.name === 'otra') fc.querySelectorAll<HTMLInputElement>('input[name="cantidad"]').forEach((r) => (r.checked = !t.value && r.value === String(evt.cantidades?.[0] ?? '')));
+      if (t.name === 'cantidad') (fc.elements.namedItem('otra') as HTMLInputElement).value = '';
+      q('[data-combo-error]').hidden = true;
+      resumir();
+    });
+    fc.addEventListener('change', resumir);
+
+    fc.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const b = borrador();
+      const err = q('[data-combo-error]');
+      if (b.cantidad < evt.minimo) {
+        err.textContent = `El mínimo para eventos es de ${evt.minimo} unidades.`;
+        err.hidden = false;
+        (fc.elements.namedItem('otra') as HTMLElement).focus();
+        return;
+      }
+      combos.push({ ...b, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
+      guardarCombos();
+      if (evt.chipitas && extras.chipitas > 0) {
+        const it = porClave.get(evt.chipitas.key);
+        if (it) {
+          const g = grupoDe(it);
+          fijarUnidades(g, unidadesGrupo(g) + extras.chipitas * it.unidades);
+          persistir();
+        }
+      }
+      extras.caja = 0;
+      extras.chipitas = 0;
+      (fc.elements.namedItem('tarjeta') as HTMLInputElement).value = '';
+      pintar();
+      cerrarCombo();
+      avisar(`🎉 Combo agregado: ${resolverCombo(b, evt)!.titulo}`);
+      rebote();
+    });
+
+    document.addEventListener('click', (e) => {
+      const t = (e.target as Element | null)?.closest<HTMLElement>('[data-combo-open], [data-combo-close], [data-combo-step], [data-combo-quitar]');
+      if (!t) return;
+      if (t.hasAttribute('data-combo-open')) {
+        e.preventDefault();
+        abrirCombo(t);
+      } else if (t.hasAttribute('data-combo-close')) {
+        cerrarCombo();
+      } else if (t.dataset.comboStep) {
+        const [k, d] = t.dataset.comboStep.split(':') as ['caja' | 'chipitas', string];
+        extras[k] = Math.max(0, Math.min(MAX_POR_ITEM, extras[k] + Number(d)));
+        resumir();
+      } else if (t.dataset.comboQuitar) {
+        const i = combos.findIndex((c) => c.id === t.dataset.comboQuitar);
+        if (i >= 0) combos.splice(i, 1);
+        guardarCombos();
+        pintar();
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('is-open')) cerrarCombo();
+    });
+    if (location.hash === '#combo') abrirCombo();
+  }
 }

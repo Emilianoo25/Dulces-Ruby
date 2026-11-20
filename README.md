@@ -23,8 +23,9 @@ Todo está en **`src/data/catalogo.ts`**: productos, precios, promos, lugares y 
 - **Producto nuevo**: copiás un bloque de `categorias`; aparece solo en el menú, el índice, el libro (2 páginas) y el panel.
 - **Fotos**: subilas a `public/fotos/` y poné `foto: '/fotos/donas.jpg'`. Sin foto se muestra una ilustración.
 - **Opción "aparte"** (`aparte: true`, ej. Palito de 3): formato propio, no se combina con los packs del carrito.
+- **Cumpleaños y eventos** (`eventos` en el mismo archivo): formatos (bolsita, palitos de 1/2/3), cantidades sugeridas, mínimo y caja personalizada. `precio: null` = "a confirmar" (el combo igual se puede pedir; el mensaje lo aclara). Fotos con `foto: '/fotos/...'`.
 - **Lugares**: la página "¿Dónde nos encontrás?" aparece sola cuando hay un lugar sin `pendiente`.
-- **Links por sección**: `/#donas`, `/#chipitas`, `/#promos`, `/#pedir`.
+- **Links por sección**: `/#donas`, `/#chipitas`, `/#eventos`, `/#promos`, `/#pedir`. `/#combo` abre directo el armador de combos.
 
 ## Carrito y pedidos
 
